@@ -19,6 +19,7 @@ public class BrightnessDecode {
 	private static final String INTENSITY_MATH_VALUE = "X";
 	private static final String INTENSITY_MATH_CLOSE = ")}";
 	private static final String INTENSITY_MATH_CLOSE_HEX = ").hex}";
+	private static final String INTENSITY_MATH_CLOSE_DECIMAL = ").decimal}";
 	private static final String INTENSITY_PERCENT_HEX = "${intensity.percent.hex}";
 	private static final String INTENSITY_BYTE_HEX = "${intensity.byte.hex}";
 
@@ -119,7 +120,19 @@ public class BrightnessDecode {
 					replaceTarget = INTENSITY_MATH + mathDescriptor + INTENSITY_MATH_CLOSE_HEX;
 					notDone = true;
 				}
+			} else if (request.contains(INTENSITY_MATH_CLOSE_DECIMAL)) {
+				mathDescriptor = request.substring(request.indexOf(INTENSITY_MATH) + INTENSITY_MATH.length(),
+						request.indexOf(INTENSITY_MATH_CLOSE_DECIMAL));
+				variables.put(INTENSITY_MATH_VALUE, new BigDecimal(intensity));
+	
+				Double endResult = calculateMathDecimal(variables, mathDescriptor);
+				if(endResult != null) {
+					replaceValue = String.format(Locale.ROOT, "%1.2f", endResult);
+					replaceTarget = INTENSITY_MATH + mathDescriptor + INTENSITY_MATH_CLOSE_DECIMAL;
+					notDone = true;
+				}
 			}
+
 			if(notDone)
 				request = request.replace(replaceTarget, replaceValue);
 		}
@@ -148,6 +161,19 @@ public class BrightnessDecode {
 			Expression exp = new Expression(mathDescriptor);
 			BigDecimal result = exp.eval(variables);
 			endResult = Math.round(result.floatValue());
+		} catch (Exception e) {
+			log.warn("Could not execute Math: " + mathDescriptor, e);
+			endResult = null;
+		}
+		return endResult;
+	}
+
+	private static Double calculateMathDecimal(Map<String, BigDecimal> variables, String mathDescriptor) {
+		Double endResult = null;
+		try {
+			Expression exp = new Expression(mathDescriptor);
+			BigDecimal result = exp.eval(variables);
+			endResult = result.doubleValue();
 		} catch (Exception e) {
 			log.warn("Could not execute Math: " + mathDescriptor, e);
 			endResult = null;
